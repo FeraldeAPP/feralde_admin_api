@@ -54,7 +54,8 @@ final class UploadController extends Controller
             ], 500);
         }
 
-        $url = Storage::disk($disk)->url($path);
+        // Return relative URL for frontend proxy
+        $url = '/storage/' . $path;
 
         return response()->json([
             'success' => true,

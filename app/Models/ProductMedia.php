@@ -39,7 +39,7 @@ final class ProductMedia extends Model
         $validator = Validator::make($data, [
             'product_id' => 'required|integer|exists:products,id',
             'type'       => 'required|string|in:IMAGE,VIDEO,DOCUMENT,PDF',
-            'url'        => 'required|string|url',
+            'url'        => 'required|string',
             'alt_text'   => 'nullable|string|max:255',
             'sort_order' => 'integer|min:0',
             'is_primary' => 'boolean',
