@@ -8,17 +8,14 @@ use App\Models\AccountingPeriod;
 use App\Models\Announcement;
 use App\Models\Bundle;
 use App\Models\BundleItem;
-use App\Models\Category;
 use App\Models\ChannelProduct;
 use App\Models\CommissionRule;
 use App\Models\DistributorProfile;
 use App\Models\DistributorRankHistory;
 use App\Models\Expense;
-use App\Models\Inventory;
 use App\Models\LeaderboardEntry;
 use App\Models\LedgerEntry;
 use App\Models\MarketingAsset;
-use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\PromoCode;
 use App\Models\ResellerProfile;
@@ -27,7 +24,6 @@ use App\Models\SystemSetting;
 use App\Models\TrainingCompletion;
 use App\Models\TrainingContent;
 use App\Models\TrainingModule;
-use App\Models\VariantPricing;
 use App\Models\Wallet;
 use App\Models\Warehouse;
 use Illuminate\Database\Seeder;
@@ -39,189 +35,30 @@ class DatabaseSeeder extends Seeder
         // -------------------------
         // Warehouse
         // -------------------------
-        $warehouse = Warehouse::create([
-            'name'       => 'Main Warehouse',
-            'code'       => 'WH-MAIN',
-            'address'    => 'Binondo, Manila, Philippines',
-            'is_default' => true,
+        $warehouse = Warehouse::updateOrCreate(
+            ['code' => 'WH-MAIN'],
+            [
+                'name'       => 'Main Warehouse',
+                'address'    => 'Binondo, Manila, Philippines',
+                'is_default' => true,
+            ]
+        );
+
+        // -------------------------
+        // Categories + Products
+        // -------------------------
+        $this->call([
+            CategorySeeder::class,
+            ProductSeeder::class,
         ]);
 
         // -------------------------
-        // Categories
+        // Bundle (uses first 3 real product variants)
         // -------------------------
-        $perfume = Category::create([
-            'name'        => 'Perfumes',
-            'slug'        => 'perfumes',
-            'description' => 'Luxury fragrances for every occasion',
-            'is_active'   => true,
-            'sort_order'  => 1,
-        ]);
+        $allVariants = ProductVariant::with('product')->take(9)->get()
+            ->map(fn($v) => ['variant' => $v, 'product' => $v->product])
+            ->toArray();
 
-        $edp = Category::create([
-            'name'        => 'Eau de Parfum',
-            'slug'        => 'eau-de-parfum',
-            'description' => 'Long-lasting concentrated fragrances',
-            'parent_id'   => $perfume->id,
-            'is_active'   => true,
-            'sort_order'  => 1,
-        ]);
-
-        $edt = Category::create([
-            'name'        => 'Eau de Toilette',
-            'slug'        => 'eau-de-toilette',
-            'description' => 'Light and fresh everyday fragrances',
-            'parent_id'   => $perfume->id,
-            'is_active'   => true,
-            'sort_order'  => 2,
-        ]);
-
-        // -------------------------
-        // Products
-        // -------------------------
-        $productDefs = [
-            [
-                'sku'               => 'PRF-NRA-001',
-                'name'              => 'Noir Absolu Eau de Parfum',
-                'slug'              => 'noir-absolu-eau-de-parfum',
-                'description'       => 'A deep, smoky fragrance with notes of oud, black pepper, and dark amber. Long-lasting and intense.',
-                'short_description' => 'Deep and smoky with oud and dark amber.',
-                'category_id'       => $edp->id,
-                'is_active'         => true,
-                'is_best_seller'    => true,
-            ],
-            [
-                'sku'               => 'PRF-RET-002',
-                'name'              => 'Rose Eternelle Eau de Parfum',
-                'slug'              => 'rose-eternelle-eau-de-parfum',
-                'description'       => 'A timeless floral bouquet centered on Bulgarian rose, accented with soft musk and white peach.',
-                'short_description' => 'Timeless Bulgarian rose with soft musk.',
-                'category_id'       => $edp->id,
-                'is_active'         => true,
-                'is_featured'       => true,
-            ],
-            [
-                'sku'               => 'PRF-CSS-003',
-                'name'              => 'Citrus Soleil Eau de Toilette',
-                'slug'              => 'citrus-soleil-eau-de-toilette',
-                'description'       => 'A bright, refreshing citrus blend of bergamot, lemon zest, and green tea. Perfect for everyday wear.',
-                'short_description' => 'Bright citrus with bergamot and green tea.',
-                'category_id'       => $edt->id,
-                'is_active'         => true,
-                'is_new_arrival'    => true,
-            ],
-            [
-                'sku'               => 'PRF-AMD-004',
-                'name'              => 'Ambre Douce Eau de Parfum',
-                'slug'              => 'ambre-douce-eau-de-parfum',
-                'description'       => 'Warm and sensual with notes of vanilla, sandalwood, and golden amber. A cozy signature scent.',
-                'short_description' => 'Warm vanilla, sandalwood, and golden amber.',
-                'category_id'       => $edp->id,
-                'is_active'         => true,
-            ],
-            [
-                'sku'               => 'PRF-VSV-005',
-                'name'              => 'Vetiver Sauvage Eau de Toilette',
-                'slug'              => 'vetiver-sauvage-eau-de-toilette',
-                'description'       => 'An earthy, woody fragrance built on vetiver, cedarwood, and a hint of grapefruit.',
-                'short_description' => 'Earthy vetiver with cedarwood and grapefruit.',
-                'category_id'       => $edt->id,
-                'is_active'         => true,
-            ],
-            [
-                'sku'               => 'PRF-JBL-006',
-                'name'              => 'Jasmin Blanc Eau de Parfum',
-                'slug'              => 'jasmin-blanc-eau-de-parfum',
-                'description'       => 'Delicate white jasmine intertwined with tuberose and a clean musk base.',
-                'short_description' => 'Delicate jasmine and tuberose.',
-                'category_id'       => $edp->id,
-                'is_active'         => true,
-            ],
-            [
-                'sku'               => 'PRF-AQM-007',
-                'name'              => 'Aqua Marine Eau Fraiche',
-                'slug'              => 'aqua-marine-eau-fraiche',
-                'description'       => 'A light, aquatic freshness with sea salt, driftwood, and cool mint. Ideal for summer.',
-                'short_description' => 'Light aquatic with sea salt and cool mint.',
-                'category_id'       => $edt->id,
-                'is_active'         => true,
-                'is_new_arrival'    => true,
-            ],
-            [
-                'sku'               => 'PRF-MNM-009',
-                'name'              => 'Musc Nomade Eau de Parfum',
-                'slug'              => 'musc-nomade-eau-de-parfum',
-                'description'       => 'A skin-close white musk with subtle notes of iris and soft woods. Effortlessly wearable.',
-                'short_description' => 'Skin-close white musk with iris.',
-                'category_id'       => $edp->id,
-                'is_active'         => true,
-                'is_best_seller'    => true,
-            ],
-            [
-                'sku'               => 'PRF-PNR-010',
-                'name'              => 'Poivre Noir Eau de Parfum',
-                'slug'              => 'poivre-noir-eau-de-parfum',
-                'description'       => 'Bold and spicy with black pepper, cardamom, and a warm leather drydown.',
-                'short_description' => 'Bold black pepper and warm leather.',
-                'category_id'       => $edp->id,
-                'is_active'         => true,
-            ],
-        ];
-
-        $sizes = [
-            ['size' => '30ml',  'retail' => 4999,  'distributor' => 3749,  'reseller' => 3499,  'wholesale' => 3249,  'stock' => 30],
-            ['size' => '50ml',  'retail' => 8499,  'distributor' => 6374,  'reseller' => 5949,  'wholesale' => 5524,  'stock' => 50],
-            ['size' => '100ml', 'retail' => 13999, 'distributor' => 10499, 'reseller' => 9799,  'wholesale' => 9099,  'stock' => 25],
-        ];
-
-        $allVariants = [];
-        $firstProduct = null;
-
-        foreach ($productDefs as $productData) {
-            $product = Product::create($productData);
-
-            if ($firstProduct === null) {
-                $firstProduct = $product;
-            }
-
-            foreach ($sizes as $sizeData) {
-                $variant = ProductVariant::create([
-                    'product_id' => $product->id,
-                    'sku'        => $productData['sku'] . '-' . str_replace('ml', '', $sizeData['size']),
-                    'name'       => $sizeData['size'],
-                    'size'       => $sizeData['size'],
-                    'is_active'  => true,
-                    'sort_order' => 0,
-                ]);
-
-                foreach ([
-                    ['tier' => 'RETAIL',      'price' => $sizeData['retail']],
-                    ['tier' => 'DISTRIBUTOR', 'price' => $sizeData['distributor']],
-                    ['tier' => 'RESELLER',    'price' => $sizeData['reseller']],
-                    ['tier' => 'WHOLESALE',   'price' => $sizeData['wholesale']],
-                ] as $pricing) {
-                    VariantPricing::create([
-                        'variant_id' => $variant->id,
-                        'tier'       => $pricing['tier'],
-                        'price'      => $pricing['price'],
-                        'is_active'  => true,
-                    ]);
-                }
-
-                Inventory::create([
-                    'variant_id'       => $variant->id,
-                    'warehouse_id'     => $warehouse->id,
-                    'quantity_on_hand' => $sizeData['stock'],
-                    'reorder_point'    => 10,
-                    'reorder_quantity' => 20,
-                ]);
-
-                $allVariants[] = ['variant' => $variant, 'product' => $product];
-            }
-        }
-
-        // -------------------------
-        // Bundle
-        // -------------------------
         $bundle = Bundle::create([
             'name'              => 'Signature Trio Set',
             'slug'              => 'signature-trio-set',
@@ -768,6 +605,13 @@ class DatabaseSeeder extends Seeder
             'total_orders'   => 89,
             'rank'           => 1,
             'badge'          => 'TOP_PERFORMER',
+        ]);
+
+        // -------------------------
+        // Sample Orders
+        // -------------------------
+        $this->call([
+            OrderSeeder::class,
         ]);
     }
 }
