@@ -10,11 +10,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class ResellerProfile extends Model
 {
     protected $fillable = [
         'user_id',
+        'first_name',
+        'last_name',
+        'email',
+        'phone',
         'reseller_code',
         'referral_code',
         'parent_distributor_id',
@@ -79,6 +84,28 @@ final class ResellerProfile extends Model
         return $this->getEffectiveDistributor() === null;
     }
 
+    /**
+     * Return reseller counts grouped by city, sorted by total descending.
+     * Cities that are null are excluded (resellers with no city on file).
+     *
+     * @return array<int, array{city: string, total: int}>
+     */
+    public static function getCityStats(): array
+    {
+        return self::whereNotNull('city')
+            ->whereNotNull('approved_at')
+            ->selectRaw('city, COUNT(*) as total')
+            ->groupBy('city')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row): array => [
+                'city'  => (string) $row->city,
+                'total' => (int) $row->total,
+            ])
+            ->values()
+            ->toArray();
+    }
+
     public static function getAll(array $filters = []): array
     {
         $query = self::with(['parentDistributor', 'wallet']);
@@ -134,6 +161,38 @@ final class ResellerProfile extends Model
                 'total'        => $resellers->total(),
             ],
         ];
+    }
+
+    /**
+     * Register a new reseller application via a distributor's referral link.
+     * Resellers may come from any city -- no geographic restriction applies.
+     * Generates reseller_code and referral_code automatically.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function registerViaDistributor(DistributorProfile $distributor, array $data): self
+    {
+        return DB::transaction(function () use ($distributor, $data): self {
+            do {
+                $resellerCode = 'RSL-' . strtoupper(Str::random(8));
+            } while (self::where('reseller_code', $resellerCode)->exists());
+
+            do {
+                $referralCode = strtoupper(Str::random(10));
+            } while (self::where('referral_code', $referralCode)->exists());
+
+            return self::create([
+                'user_id'               => null,
+                'first_name'            => $data['first_name'],
+                'last_name'             => $data['last_name'],
+                'email'                 => $data['email'],
+                'phone'                 => $data['phone'] ?? null,
+                'city'                  => $data['city'] ?? null,
+                'parent_distributor_id' => $distributor->id,
+                'reseller_code'         => $resellerCode,
+                'referral_code'         => $referralCode,
+            ]);
+        });
     }
 
     public function approve(string $approvedBy): bool

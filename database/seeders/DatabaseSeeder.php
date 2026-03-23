@@ -608,6 +608,14 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // -------------------------
+        // Additional Distributors & Resellers
+        // -------------------------
+        $this->call([
+            DistributorSeeder::class,
+            ResellerSeeder::class,
+        ]);
+
+        // -------------------------
         // Sample Orders
         // -------------------------
         $this->call([

@@ -20,6 +20,15 @@ final class ResellerController extends Controller
         ]);
     }
 
+    public function cityStats(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Reseller city statistics retrieved successfully',
+            'data'    => ResellerProfile::getCityStats(),
+        ]);
+    }
+
     public function show(int $id): JsonResponse
     {
         $reseller = ResellerProfile::with(['parentDistributor', 'wallet', 'commissions'])->find($id);

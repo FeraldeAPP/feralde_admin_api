@@ -10,11 +10,15 @@ return new class extends Migration
     {
         Schema::create('reseller_profiles', function (Blueprint $table) {
             $table->id();
-            $table->string('user_id')->unique(); // cross-db reference to feralde_auth users
+            $table->string('user_id')->nullable()->unique(); // cross-db reference to feralde_auth users; null for self-registered applicants
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
+            $table->string('email')->nullable()->unique(); // contact email; used as identifier for self-registered resellers
+            $table->string('phone')->nullable();
             $table->string('reseller_code')->unique();
             $table->string('referral_code')->unique();
             $table->unsignedBigInteger('parent_distributor_id')->nullable(); // null = city-based or direct ordering
-            $table->string('city')->nullable(); // the Philippine city the reseller is based in
+            $table->string('city')->nullable(); // the city the reseller is based in (no geographic restriction)
             $table->timestamp('approved_at')->nullable();
             $table->string('approved_by')->nullable();
             $table->decimal('total_sales', 18, 4)->default(0);
@@ -27,6 +31,7 @@ return new class extends Migration
 
             $table->index('parent_distributor_id');
             $table->index('city');
+            $table->index('email');
             $table->foreign('parent_distributor_id')->references('id')->on('distributor_profiles')->nullOnDelete();
         });
     }

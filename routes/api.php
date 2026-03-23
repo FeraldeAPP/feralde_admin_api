@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ProductMediaController;
 use App\Http\Controllers\Api\ProductReviewController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\Api\PromoCodeController;
+use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\ResellerController;
 use App\Http\Controllers\Api\SalesChannelController;
 use App\Http\Controllers\Api\StoreController;
@@ -40,6 +41,13 @@ use App\Http\Controllers\Api\WarehouseController;
 // Channel webhooks -- public, verified by HMAC signature inside the controller
 Route::middleware(['force.json'])->group(function (): void {
     Route::post('/sales-channels/{id}/webhook', [SalesChannelController::class, 'webhook']);
+});
+
+// Public registration endpoints -- no authentication required
+// These allow prospective resellers to register via a distributor's shareable link
+Route::middleware(['force.json'])->prefix('register')->group(function (): void {
+    Route::get('/distributor/{referralCode}', [RegistrationController::class, 'distributorProfile']);
+    Route::post('/reseller/{referralCode}', [RegistrationController::class, 'registerReseller']);
 });
 
 Route::middleware(['force.json', 'auth.proxy'])->group(function (): void {
@@ -141,6 +149,7 @@ Route::middleware(['force.json', 'auth.proxy'])->group(function (): void {
     // Resellers
     Route::prefix('resellers')->group(function (): void {
         Route::get('/', [ResellerController::class, 'index'])->middleware('permission:resellers.view');
+        Route::get('/cities', [ResellerController::class, 'cityStats'])->middleware('permission:resellers.view');
         Route::get('/{id}', [ResellerController::class, 'show'])->middleware('permission:resellers.view');
         Route::post('/{id}/approve', [ResellerController::class, 'approve'])->middleware('permission:resellers.manage');
     });
