@@ -106,7 +106,16 @@ final class Order extends Model
 
     public static function getAll(array $filters = []): array
     {
-        $query = self::with(['items', 'shippingAddress', 'distributor', 'reseller']);
+        $query = self::with(['items', 'shippingAddress', 'distributor.rankHistory', 'reseller']);
+
+        // Filter by order type: 'shop' = no distributor, 'distributor' = has distributor
+        if (!empty($filters['order_type'])) {
+            if ($filters['order_type'] === 'shop') {
+                $query->whereNull('distributor_id');
+            } elseif ($filters['order_type'] === 'distributor') {
+                $query->whereNotNull('distributor_id');
+            }
+        }
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -123,7 +132,10 @@ final class Order extends Model
         if (!empty($filters['search'])) {
             $query->where(function (Builder $q) use ($filters): void {
                 $q->where('order_number', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('customer_id', $filters['search']);
+                  ->orWhere('customer_id', $filters['search'])
+                  ->orWhereHas('distributor', function (Builder $dq) use ($filters): void {
+                      $dq->where('distributor_code', 'like', '%' . $filters['search'] . '%');
+                  });
             });
         }
 

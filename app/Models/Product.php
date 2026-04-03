@@ -143,7 +143,7 @@ final class Product extends Model
      */
     public static function getProducts(array $filters = []): array
     {
-        $query = self::with(['category', 'variants'])->withTrashed();
+        $query = self::with(['category', 'variants', 'media'])->withTrashed();
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];

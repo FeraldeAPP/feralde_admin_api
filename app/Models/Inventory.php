@@ -99,7 +99,7 @@ final class Inventory extends Model
 
     public static function getAll(array $filters = []): array
     {
-        $query = self::with(['variant.product', 'warehouse']);
+        $query = self::with(['variant.product.media', 'warehouse']);
 
         if (!empty($filters['warehouse_id'])) {
             $query->where('warehouse_id', $filters['warehouse_id']);

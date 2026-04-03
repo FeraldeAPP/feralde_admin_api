@@ -34,6 +34,23 @@ final class ProductMedia extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /**
+     * Ensure the url is always an absolute URL.
+     * Relative paths (e.g. /products/image.webp) are prefixed with APP_URL.
+     */
+    public function getUrlAttribute(mixed $value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        if (str_starts_with((string) $value, 'http://') || str_starts_with((string) $value, 'https://')) {
+            return $value;
+        }
+
+        return rtrim(config('app.url'), '/') . '/' . ltrim((string) $value, '/');
+    }
+
     public static function validate(array $data): array
     {
         $validator = Validator::make($data, [

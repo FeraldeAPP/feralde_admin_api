@@ -121,6 +121,7 @@ Route::middleware(['force.json', 'auth.proxy'])->group(function (): void {
     Route::prefix('orders')->group(function (): void {
         Route::get('/', [OrderController::class, 'index'])->middleware('permission:orders.view');
         Route::get('/{id}', [OrderController::class, 'show'])->middleware('permission:orders.view');
+        Route::put('/{id}', [OrderController::class, 'updateStatus'])->middleware('permission:orders.manage');
         Route::post('/{id}/status', [OrderController::class, 'updateStatus'])->middleware('permission:orders.manage');
         Route::post('/{id}/fulfillments', [OrderController::class, 'storeFulfillment'])->middleware('permission:orders.manage');
         Route::post('/{id}/returns', [OrderController::class, 'storeReturn'])->middleware('permission:orders.manage');
