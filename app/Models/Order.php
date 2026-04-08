@@ -16,6 +16,7 @@ final class Order extends Model
     protected $fillable = [
         'order_number',
         'customer_id',
+        'guest_email',
         'distributor_id',
         'reseller_id',
         'channel_id',
@@ -40,6 +41,7 @@ final class Order extends Model
         'delivered_at',
         'cancelled_at',
         'cancellation_reason',
+        'payment_proof_url',
     ];
 
     protected $casts = [
@@ -102,6 +104,22 @@ final class Order extends Model
     public function reseller(): BelongsTo
     {
         return $this->belongsTo(ResellerProfile::class, 'reseller_id');
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(OrderHistory::class)->orderByDesc('created_at');
+    }
+
+    public function logHistory(string $action, string $description, ?string $userId = null, ?string $userName = null, array $metadata = []): OrderHistory
+    {
+        return $this->histories()->create([
+            'user_id'     => $userId,
+            'user_name'   => $userName,
+            'action'      => $action,
+            'description' => $description,
+            'metadata'    => $metadata,
+        ]);
     }
 
     public static function getAll(array $filters = []): array
