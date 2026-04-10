@@ -26,6 +26,8 @@ use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\Api\WarehouseController;
 
+use App\Http\Controllers\Api\ShippingMethodController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes -- feralde_ecom_admin_api (Admin Panel)
@@ -127,6 +129,15 @@ Route::middleware(['force.json', 'auth.proxy'])->group(function (): void {
         Route::post('/{id}/returns', [OrderController::class, 'storeReturn'])->middleware('permission:orders.manage');
         Route::post('/{id}/invoices', [OrderController::class, 'storeInvoice'])->middleware('permission:orders.manage');
         Route::post('/{id}/payments/paid', [OrderController::class, 'markPaymentPaid'])->middleware('permission:orders.manage');
+    });
+
+    // Shipping Methods
+    Route::prefix('shipping-methods')->group(function (): void {
+        Route::get('/', [ShippingMethodController::class, 'index']);
+        Route::post('/', [ShippingMethodController::class, 'store']);
+        Route::get('/{id}', [ShippingMethodController::class, 'show']);
+        Route::put('/{id}', [ShippingMethodController::class, 'update']);
+        Route::delete('/{id}', [ShippingMethodController::class, 'destroy']);
     });
 
     // Distributors
