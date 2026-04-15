@@ -27,7 +27,7 @@ final class OrderController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $order = Order::with(['items.variant.product', 'payments', 'fulfillment', 'returns', 'invoices', 'shippingAddress', 'billingAddress', 'commissions'])->find($id);
+        $order = Order::with(['items.variant.product.media', 'payments', 'fulfillment', 'returns', 'invoices', 'shippingAddress', 'billingAddress', 'commissions'])->find($id);
 
         if (!$order) {
             return response()->json(['success' => false, 'message' => 'Order not found'], 404);
@@ -53,15 +53,25 @@ final class OrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Order not found'], 404);
         }
 
-        $userId = (string) $request->attributes->get('auth_user')['id'];
+        $user = $request->attributes->get('auth_user');
+        $userId = $user['id'] ?? null;
+        $userName = $user['name'] ?? null;
 
         if ($request->internal_notes) {
             $order->update(['internal_notes' => $request->internal_notes]);
         }
 
-        if (!$order->transitionStatus($request->status, $userId)) {
+        if (!$order->transitionStatus($request->status, (string)$userId)) {
             return response()->json(['success' => false, 'message' => 'Invalid status transition'], 422);
         }
+
+        $order->logHistory(
+            'STATUS_UPDATED',
+            "Order status changed to {$request->status}",
+            (string)$userId,
+            (string)$userName,
+            ['new_status' => $request->status]
+        );
 
         return response()->json(['success' => true, 'message' => 'Order status updated', 'data' => $order->fresh()]);
     }
@@ -105,16 +115,65 @@ final class OrderController extends Controller
         return response()->json(['success' => true, 'message' => 'Invoice created successfully', 'data' => $invoice], 201);
     }
 
-    public function markPaymentPaid(Request $request, int $orderId, int $paymentId): JsonResponse
+    public function markPaymentPaid(Request $request, int $id): JsonResponse
     {
-        $payment = Payment::where('order_id', $orderId)->find($paymentId);
+        $order = Order::with('payments')->find($id);
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        }
+
+        // Find the first non-paid payment record
+        $payment = $order->payments()->where('status', '!=', 'PAID')->first();
 
         if (!$payment) {
-            return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
+            // Create a manual payment record if none exists
+            $payment = Payment::create([
+                'order_id' => $order->id,
+                'method'   => $order->payment_method ?? 'MANUAL',
+                'status'   => 'PENDING',
+                'amount'   => $order->total_amount,
+                'currency' => 'PHP',
+            ]);
         }
 
         $payment->markPaid($request->gateway_reference);
 
-        return response()->json(['success' => true, 'message' => 'Payment marked as paid', 'data' => $payment->fresh()]);
+        $user = $request->attributes->get('auth_user');
+        $userId = $user['id'] ?? null;
+        $userName = $user['name'] ?? null;
+
+        $order->logHistory(
+            'PAYMENT_CONFIRMED',
+            "Payment of PHP " . number_format((float)$payment->amount, 2) . " confirmed via {$payment->method}",
+            (string)$userId,
+            (string)$userName,
+            ['payment_id' => $payment->id, 'amount' => $payment->amount, 'method' => $payment->method]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order marked as paid',
+            'data'    => $order->fresh(['payments', 'items'])
+        ]);
+    }
+
+    public function history(int $id): JsonResponse
+    {
+        $order = Order::find($id);
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        }
+
+        $history = $order->histories()
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order history retrieved successfully',
+            'data'    => $history
+        ]);
     }
 }
