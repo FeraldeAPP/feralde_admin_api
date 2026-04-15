@@ -45,11 +45,12 @@ class DatabaseSeeder extends Seeder
         );
 
         // -------------------------
-        // Categories + Products
+        // Categories + Products + Reviews
         // -------------------------
         $this->call([
             CategorySeeder::class,
             ProductSeeder::class,
+            ProductReviewSeeder::class,
         ]);
 
         // -------------------------
