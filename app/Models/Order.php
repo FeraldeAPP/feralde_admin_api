@@ -139,6 +139,10 @@ final class Order extends Model
             $query->where('status', $filters['status']);
         }
 
+        if (!empty($filters['distributor_id'])) {
+            $query->where('distributor_id', $filters['distributor_id']);
+        }
+
         if (!empty($filters['payment_status'])) {
             $query->where('payment_status', $filters['payment_status']);
         }
