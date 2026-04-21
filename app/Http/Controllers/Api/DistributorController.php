@@ -5,10 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Announcement;
 use App\Models\DistributorProfile;
+use App\Models\MarketingAsset;
+use App\Models\Order;
+use App\Models\ResellerProfile;
+use App\Models\TrainingModule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 final class DistributorController extends Controller
 {
@@ -27,6 +34,66 @@ final class DistributorController extends Controller
             'success' => true,
             'message' => 'Pending applications retrieved successfully',
             'data'    => DistributorProfile::getPending($request->all()),
+        ]);
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        $userId = (string) $request->attributes->get('auth_user')['id'];
+        $distributor = DistributorProfile::with(['wallet', 'resellers', 'rankHistory', 'commissions'])
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$distributor) {
+            return response()->json(['success' => false, 'message' => 'Distributor profile not found'], 404);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Distributor retrieved successfully', 'data' => $distributor]);
+    }
+
+    public function onboard(Request $request): JsonResponse
+    {
+        $userId = (string) $request->attributes->get('auth_user')['id'];
+        $distributor = DistributorProfile::where('user_id', $userId)->first();
+
+        if (!$distributor) {
+            return response()->json(['success' => false, 'message' => 'Distributor profile not found'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'business_type'       => 'required|string|in:starter,premium,elite',
+            'selected_city'       => 'required|string|max:150',
+            'facebook_url'        => 'required|url|max:400',
+            'tiktok_username'     => 'required|string|max:100',
+            'payment_proof'       => 'required|file|image|max:10240', // 10MB max
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        // Store payment proof
+        $file = $request->file('payment_proof');
+        $filename = Str::uuid()->toString() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('payment_proofs', $filename, 'public');
+
+        $distributor->update([
+            'business_type'           => $request->business_type,
+            'selected_city'           => $request->selected_city,
+            'facebook_url'            => $request->facebook_url,
+            'tiktok_username'         => $request->tiktok_username,
+            'payment_proof_path'      => '/storage/' . $path,
+            'onboarding_completed_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Onboarding data submitted successfully',
+            'data'    => $distributor->fresh(),
         ]);
     }
 
@@ -266,6 +333,107 @@ final class DistributorController extends Controller
             'success' => true,
             'message' => 'City distributor found',
             'data'    => $distributor->load(['wallet']),
+        ]);
+    }
+
+    public function confirmPayment(int $id): JsonResponse
+    {
+        $distributor = DistributorProfile::find($id);
+
+        if (!$distributor) {
+            return response()->json(['success' => false, 'message' => 'Distributor not found'], 404);
+        }
+
+        $distributor->confirmPayment();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment confirmed successfully',
+            'data'    => $distributor->fresh(),
+        ]);
+    }
+
+    /**
+     * Get the resellers in the current logged-in distributor's network.
+     * Uses ResellerProfile::getAll() with the current distributor's ID.
+     */
+    public function myResellers(Request $request): JsonResponse
+    {
+        $userId = (string) $request->attributes->get('auth_user')['id'];
+        $distributor = DistributorProfile::where('user_id', $userId)->first();
+
+        if (!$distributor) {
+            return response()->json(['success' => false, 'message' => 'Distributor profile not found'], 404);
+        }
+
+        $filters = $request->all();
+        $filters['distributor_id'] = $distributor->id;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Network resellers retrieved successfully',
+            'data'    => ResellerProfile::getAll($filters),
+        ]);
+    }
+
+    /**
+     * Get all marketing assets for the current distributor.
+     */
+    public function myMarketingAssets(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Marketing assets retrieved successfully',
+            'data'    => MarketingAsset::getAll($request->all()),
+        ]);
+    }
+
+    /**
+     * Get all published announcements for the current distributor.
+     */
+    public function myAnnouncements(Request $request): JsonResponse
+    {
+        $filters = $request->all();
+        $filters['is_published'] = true; // Distributors should only see published ones
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Announcements retrieved successfully',
+            'data'    => Announcement::getAll($filters),
+        ]);
+    }
+
+    /**
+     * Get all training modules for the current distributor.
+     */
+    public function myTrainings(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Training modules retrieved successfully',
+            'data'    => TrainingModule::getAll($request->all()),
+        ]);
+    }
+
+    /**
+     * Get the current logged-in distributor's orders.
+     */
+    public function myOrders(Request $request): JsonResponse
+    {
+        $userId = (string) $request->attributes->get('auth_user')['id'];
+        $distributor = DistributorProfile::where('user_id', $userId)->first();
+
+        if (!$distributor) {
+            return response()->json(['success' => false, 'message' => 'Distributor profile not found'], 404);
+        }
+
+        $filters = $request->all();
+        $filters['distributor_id'] = $distributor->id;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Distributor orders retrieved successfully',
+            'data'    => Order::getAll($filters),
         ]);
     }
 }

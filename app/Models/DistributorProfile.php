@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Mail\DistributorWelcomeMail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 final class DistributorProfile extends Model
@@ -40,6 +42,26 @@ final class DistributorProfile extends Model
         'bank_name',
         'e_wallet_gcash',
         'e_wallet_maya',
+        'payment_confirmed_at',
+        'payment_proof_path',
+        'business_name',
+        'business_type',
+        'selected_city',
+        'tin_or_reg_no',
+        'business_address',
+        'contact_number',
+        'date_of_birth',
+        'gender',
+        'region',
+        'province',
+        'city',
+        'barangay',
+        'street_address',
+        'zip_code',
+        'landmark',
+        'facebook_url',
+        'tiktok_username',
+        'onboarding_completed_at',
     ];
 
     protected $casts = [
@@ -49,7 +71,14 @@ final class DistributorProfile extends Model
         'rejected_at'          => 'datetime',
         'suspended_at'         => 'datetime',
         'rank_updated_at'      => 'datetime',
+        'payment_confirmed_at' => 'datetime',
+        'onboarding_completed_at' => 'datetime',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function parentDistributor(): BelongsTo
     {
@@ -303,5 +332,22 @@ final class DistributorProfile extends Model
                 'rank_updated_at' => now(),
             ]);
         });
+    }
+    
+    public function confirmPayment(): bool
+    {
+        $updated = $this->update([
+            'payment_confirmed_at' => now(),
+        ]);
+
+        if ($updated) {
+            $this->loadMissing('user');
+            
+            if ($this->user) {
+                Mail::to($this->user->email)->send(new DistributorWelcomeMail($this->user->name));
+            }
+        }
+
+        return $updated;
     }
 }

@@ -144,6 +144,13 @@ Route::middleware(['force.json', 'auth.proxy'])->group(function (): void {
     // Distributors
     Route::prefix('distributors')->group(function (): void {
         Route::get('/', [DistributorController::class, 'index'])->middleware('permission:distributors.view');
+        Route::get('/me', [DistributorController::class, 'me']);
+        Route::get('/me/resellers', [DistributorController::class, 'myResellers']);
+        Route::get('/me/orders', [DistributorController::class, 'myOrders']);
+        Route::get('/me/marketing-assets', [DistributorController::class, 'myMarketingAssets']);
+        Route::get('/me/announcements', [DistributorController::class, 'myAnnouncements']);
+        Route::get('/me/trainings', [DistributorController::class, 'myTrainings']);
+        Route::post('/onboard', [DistributorController::class, 'onboard']);
         Route::get('/pending', [DistributorController::class, 'pending'])->middleware('permission:distributors.view');
         Route::get('/city', [DistributorController::class, 'cityDistributor'])->middleware('permission:distributors.view');
         Route::post('/', [DistributorController::class, 'store'])->middleware('permission:distributors.manage');
@@ -157,6 +164,7 @@ Route::middleware(['force.json', 'auth.proxy'])->group(function (): void {
         Route::post('/{id}/city', [DistributorController::class, 'assignCity'])->middleware('permission:distributors.manage');
         Route::delete('/{id}/city', [DistributorController::class, 'unassignCity'])->middleware('permission:distributors.manage');
         Route::get('/{id}/network-resellers', [DistributorController::class, 'networkResellers'])->middleware('permission:distributors.view');
+        Route::post('/{id}/confirm-payment', [DistributorController::class, 'confirmPayment'])->middleware('permission:distributors.manage');
     });
 
     // Resellers
